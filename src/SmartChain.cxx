@@ -7,8 +7,7 @@
 
 SmartChain::SmartChain(std::string tree_name): 
   TChain(tree_name.c_str()), 
-  m_tree_name(tree_name), 
-  m_last_tree(-1)
+  m_tree_name(tree_name)
 { 
 }
 
@@ -24,32 +23,9 @@ int SmartChain::add(std::string file_name, long long nentries) {
   }
   return TChain::Add(file_name.c_str(), nentries); 
 }
-int SmartChain::GetEntry(long long int entry_n, int getall) { 
-  // have to turn off errors even though I explicetly told root I don't 
-  // want them. These fucking designers are retarded. 
-  int old_error_level = gErrorIgnoreLevel; 
-  gErrorIgnoreLevel = kFatal; 
-  int return_val = TChain::GetEntry(entry_n, getall); 
-  gErrorIgnoreLevel = old_error_level; 
-  int this_tree_n = GetTreeNumber(); 
-  if (this_tree_n != m_last_tree) { 
-    for (auto br_itr: m_set_branches) { 
-      if (m_fake_branches.count(br_itr)) continue; 
-      if (!GetBranch(br_itr.c_str())) { 
-	throw_bad_branch(br_itr); 
-      }
-    }
-    m_last_tree = this_tree_n; 
-  }
-  return return_val; 
-}
 
 std::vector<std::string> SmartChain::get_all_branch_names() const { 
   return m_set_branches; 
-}
-std::string SmartChain::get_current_file() const { 
-  assert(m_last_tree < int(m_files.size())); 
-  return m_files.at(m_last_tree); 
 }
 
 void SmartChain::SetBranchAddressPrivate(std::string name, void* branch, 
@@ -64,7 +40,6 @@ void SmartChain::SetBranchAddressPrivate(std::string name, void* branch,
     switch (action) { 
     case chain::NULL_POINTER: {
       SetBranchStatus(name.c_str(), 0, &branches_found); 
-      m_fake_branches.insert(name); 
       return; 
     }
     case chain::NULL_NO_RECORD: {
@@ -92,12 +67,6 @@ void SmartChain::SetBranchAddressPrivate(std::string name, void* branch,
 
 }
 
-void SmartChain::fake_set(const std::string& name){ 
-  check_for_dup(name); 
-  m_set_branch_set.insert(name); 
-  m_set_branches.push_back(name);
-  m_fake_branches.insert(name); 
-}
 
 // ================ private functions ====================
 

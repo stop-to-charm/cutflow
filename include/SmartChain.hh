@@ -16,13 +16,10 @@ public:
   using TChain::Add; 
   SmartChain(std::string tree_name); 
   virtual int add(std::string file_name, long long nentries = -1); 
-  virtual int GetEntry(long long int entry_n, int getall = 0); 
   template<typename T, typename Z>
   void SetBranch(T name, Z branch, 
 		 chain::MissingBranchAction = chain::THROW); 
-  void fake_set(const std::string&); 
   std::vector<std::string> get_all_branch_names() const; 
-  std::string get_current_file() const; 
 private: 
   typedef std::vector<std::string> Strings; 
   void SetBranchAddressPrivate(std::string name, void* branch, 
@@ -33,9 +30,7 @@ private:
   std::string m_tree_name; 
   Strings m_set_branches; 
   std::set<std::string> m_set_branch_set; 
-  std::set<std::string> m_fake_branches; 
   Strings m_files; 
-  int m_last_tree; 		// to trigger branch check 
 }; 
 
 class MissingBranchError: public std::runtime_error 

@@ -9,4 +9,5 @@ bin/
 *.pyc
 *.so
 local.mk
-cutflow
+/cutflow
+/stop-files
