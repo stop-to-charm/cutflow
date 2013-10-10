@@ -256,15 +256,115 @@ int main (int narg, const char* argv[]) {
     counter["signal_jets"] += signal_jets.size(); 
     counter["control_electrons"] += control_electrons.size(); 
     counter["control_muons"] += control_muons.size(); 
+
+    // --- calculate met ----
+    std::vector<int> preselected_mu_idx; 
+    for (std::vector<IdLorentzVector>::const_iterator 
+	   itr = preselected_mu.begin(); itr != preselected_mu.end(); 
+	 itr++){ 
+      preselected_mu_idx.push_back(itr->index); 
+    }
+    std::vector<int> el_index; 
+    for (int eln = 0; eln < buffer.el_n; eln++) { 
+      float wet = buffer.el_MET_Egamma10NoTau_wet->at(eln).at(0); 
+      if (wet != 0.0) el_index.push_back(eln); 
+    }
+    TVector2 met = def->GetMET
+      (buffer.jet_MET_Egamma10NoTau_wet,
+       buffer.jet_MET_Egamma10NoTau_wpx,
+       buffer.jet_MET_Egamma10NoTau_wpy,
+       buffer.jet_MET_Egamma10NoTau_statusWord,
+       el_index,
+       buffer.el_MET_Egamma10NoTau_wet,
+       buffer.el_MET_Egamma10NoTau_wpx,
+       buffer.el_MET_Egamma10NoTau_wpy,
+       buffer.el_MET_Egamma10NoTau_statusWord,
+       buffer.MET_Egamma10NoTau_CellOut_etx, //CellOut
+       buffer.MET_Egamma10NoTau_CellOut_ety, //CellOut
+       buffer.MET_Egamma10NoTau_CellOut_sumet, //CellOut
+       buffer.MET_CellOut_Eflow_STVF_etx, 
+       buffer.MET_CellOut_Eflow_STVF_ety,
+       buffer.MET_CellOut_Eflow_STVF_sumet,		  
+       buffer.MET_Egamma10NoTau_RefGamma_etx,
+       buffer.MET_Egamma10NoTau_RefGamma_ety,
+       buffer.MET_Egamma10NoTau_RefGamma_sumet,
+       preselected_mu_idx, 
+       buffer.mu_staco_ms_qoverp, 
+       buffer.mu_staco_ms_theta, 
+       buffer.mu_staco_ms_phi, 
+       buffer.mu_staco_charge, 
+       buffer.mu_staco_energyLossPar,
+       buffer.averageIntPerXing); 
+    
+    // ---- start the event-wise cutflow -----
+    if (!buffer.trigger) continue; 
+    counter["trigger"]++; 
+
+    bool pass_vxp = def->IsGoodVertex(buffer.vx_nTracks); 
+    if (!pass_vxp) continue; 
+    counter["primary_vertex"]++; 
+
+    bool has_lar_error = (buffer.larError == 2); 
+    if(has_lar_error) continue; 
+    counter["lar_error"]++; 
+
+    if (buffer.tileError) continue; 
+    counter["tile_error"]++; 
+    
+    if (buffer.coreFlags & 0x40000) continue; 
+    counter["core_flags"]++; 
+
+    bool has_tile_trip = def->IsTileTrip(buffer.RunNumber, buffer.lbn, 
+					 buffer.EventNumber); 
+    if (has_tile_trip) continue; 
+    counter["tile_trip"]++; 
+    
+    if (veto_electrons.size()) continue; 
+    counter["electron_veto"]++; 
+
+    if (veto_electrons.size()) continue; 
+    counter["muon_veto"]++; 
+
+    if (veto_jets.size()) continue; 
+    counter["bad_jet_veto"]++; 
+    
+    const size_t n_jets = 4; 
+    if (signal_jets.size() < n_jets) continue; 
+    counter["n_jet"]++; 
+    
+    TLorentzVector met_4vec; 
+    met_4vec.SetPtEtaPhiE(1, 0, met.Phi(), 1); 
+    float min_dphi = 1000; 
+    for (std::vector<IdLorentzVector>::const_iterator 
+	   itr = signal_jets.begin(); itr < signal_jets.begin() + n_jets; 
+	 itr++) { 
+      float deltaphi = std::abs(met_4vec.DeltaPhi(*itr)); 
+      min_dphi = std::min(deltaphi, min_dphi); 
+    }
+    if (min_dphi < 0.4) continue; 
+    counter["dphi_jetmet_min"]++; 
+    
+    if (met.Mod() < 280e3) continue; 
+    counter["met_280"]++; 
+    
+    if (signal_jets.at(0).Pt() < 280e3) continue; 
+    counter["leading_jet_280"]++; 
+
   } // end of event loop
 
 
   // ------ dump results ------
+  printf("=======================================================\n"); 
   typedef std::vector<std::pair<std::string, int> > OrdCuts; 
   OrdCuts ordered_cuts = counter.get_ordered_cuts(); 
   for (OrdCuts::const_iterator itr = ordered_cuts.begin(); 
        itr != ordered_cuts.end(); itr++) { 
-    printf("%s: %i\n", itr->first.c_str(), itr->second); 
+    size_t pad_size = 20; 
+    std::string name = itr->first; 
+    if (name.size() < pad_size) { 
+      name.insert(0, pad_size - name.size(), ' '); 
+    }
+    printf("%s: %i\n", name.c_str(), itr->second); 
   }
 
 }
