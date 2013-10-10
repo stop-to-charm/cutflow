@@ -26,6 +26,9 @@ template<typename M, typename A>
 A remove_overlaping(const M& mask, A altered, const float delta_r); 
 
 int main (int narg, const char* argv[]) { 
+
+  const bool is_data = false; 
+
   SmartChain* chain = new SmartChain("susy"); 
   for (int iii = 1; iii < narg; iii++) { 
     printf("file: %s, %i of %i\n", argv[iii], iii, narg - 1); 
@@ -35,7 +38,7 @@ int main (int narg, const char* argv[]) {
 
   // ------ initialize susytools here -----------------
   SUSYObjDef* def = new SUSYObjDef; 
-  def->initialize(false, true); // not data, atlfast
+  def->initialize(is_data, true); // not data, atlfast
   printf("initalized\n"); 
 
   CutCounter counter; 
@@ -305,13 +308,13 @@ int main (int narg, const char* argv[]) {
     counter["primary_vertex"]++; 
 
     bool has_lar_error = (buffer.larError == 2); 
-    if(has_lar_error) continue; 
+    if(has_lar_error && is_data) continue; 
     counter["lar_error"]++; 
 
-    if (buffer.tileError) continue; 
+    if (buffer.tileError && is_data) continue; 
     counter["tile_error"]++; 
     
-    if (buffer.coreFlags & 0x40000) continue; 
+    if (buffer.coreFlags & 0x40000 && is_data) continue; 
     counter["core_flags"]++; 
 
     bool has_tile_trip = def->IsTileTrip(buffer.RunNumber, buffer.lbn, 
@@ -322,7 +325,7 @@ int main (int narg, const char* argv[]) {
     if (veto_electrons.size()) continue; 
     counter["electron_veto"]++; 
 
-    if (veto_electrons.size()) continue; 
+    if (veto_muons.size()) continue; 
     counter["muon_veto"]++; 
 
     if (veto_jets.size()) continue; 
