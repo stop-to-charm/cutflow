@@ -7,23 +7,17 @@
 #include <set> 
 #include <stdexcept>
 
-namespace chain { 
-  enum MissingBranchAction {THROW, NULL_POINTER, NULL_NO_RECORD}; 
-}
-
 class SmartChain: public TChain { 
 public: 
   using TChain::Add; 
   SmartChain(std::string tree_name); 
   virtual int add(std::string file_name, long long nentries = -1); 
   template<typename T, typename Z>
-  void SetBranch(T name, Z branch, 
-		 chain::MissingBranchAction = chain::THROW); 
+  void SetBranch(T name, Z branch); 
   std::vector<std::string> get_all_branch_names() const; 
 private: 
   typedef std::vector<std::string> Strings; 
-  void SetBranchAddressPrivate(std::string name, void* branch, 
-			       chain::MissingBranchAction action); 
+  void SetBranchAddressPrivate(std::string name, void* branch);
   void throw_bad_branch(std::string name) const; 
   std::string get_files_string() const; 
   void check_for_dup(const std::string& branch_name) const; 
@@ -43,10 +37,9 @@ public:
 
 
 template<typename T, typename Z>
-void SmartChain::SetBranch(T name, Z branch, 
-			   chain::MissingBranchAction action) { 
+void SmartChain::SetBranch(T name, Z branch){
   *branch = 0; 
-  SetBranchAddressPrivate(name, branch, action); 
+  SetBranchAddressPrivate(name, branch); 
 }
 
 

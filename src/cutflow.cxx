@@ -17,6 +17,7 @@ public:
   bool pass; 
 };
 
+// these functions check to see if the object passed the SUSYObjDef cuts
 std::vector<IdLorentzVector> filter_pass(const std::vector<IdLorentzVector>&); 
 std::vector<IdLorentzVector> filter_fail(const std::vector<IdLorentzVector>&); 
 bool has_higher_pt(const TLorentzVector& v1, const TLorentzVector& v2); 
@@ -103,7 +104,6 @@ int main (int narg, const char* argv[]) {
 
     std::vector<IdLorentzVector> all_electrons; 
     for (int eli = 0; eli < buffer.el_n; eli++) { 
-      float wet = buffer.el_MET_Egamma10NoTau_wet->at(eli).at(0); 
       bool good_el = def->FillElectron(
 	eli,
 	buffer.el_eta                   ->at(eli), 
@@ -127,11 +127,6 @@ int main (int narg, const char* argv[]) {
       electron.index = eli; 
       electron.pass = good_el; 
       all_electrons.push_back(electron); 
-      // if (wet) { 
-      // printf("wet: %f\n", wet); 
-      // printf("el phi, E: %f, %f\n", buffer.el_cl_phi->at(eli), buffer.el_cl_E->at(eli)); 
-      // printf("el px,y: %f, %f\n", el_tlv.Px(), el_tlv.Py()); 
-      // }
     } // end electron filling loop
 
     std::vector<IdLorentzVector> all_muons; 
@@ -172,7 +167,6 @@ int main (int narg, const char* argv[]) {
     // object preselection 
     std::vector<IdLorentzVector> preselected_el = filter_pass(all_electrons); 
     std::vector<IdLorentzVector> preselected_mu = filter_pass(all_muons); 
-    
     std::vector<IdLorentzVector> preselected_jets; 
     for (std::vector<IdLorentzVector>::const_iterator jitr = all_jets.begin(); 
 	 jitr != all_jets.end(); jitr++) { 
@@ -182,23 +176,17 @@ int main (int narg, const char* argv[]) {
 	preselected_jets.push_back(*jitr); 
       }
     }
-
     counter["preselected_el"] += preselected_el.size(); 
     counter["preselected_mu"] += preselected_mu.size(); 
     counter["preselected_jets"] += preselected_jets.size(); 
 
     // overlap removal 
-    // printf("jet ol\n"); 
     std::vector<IdLorentzVector> after_overlap_jets = remove_overlaping(
       preselected_el, preselected_jets, 0.2); 
-
-    // printf("el ol\n"); 
     std::vector<IdLorentzVector> after_overlap_el = remove_overlaping(
       after_overlap_jets, preselected_el, 0.4); 
-    // printf("mu ol\n"); 
     std::vector<IdLorentzVector> after_overlap_mu = remove_overlaping(
       after_overlap_jets, preselected_mu, 0.4); 
-    
     counter["after_overlap_el"]   += after_overlap_el.size(); 
     counter["after_overlap_mu"]   += after_overlap_mu.size(); 
     counter["after_overlap_jets"] += after_overlap_jets.size(); 
@@ -265,7 +253,6 @@ int main (int narg, const char* argv[]) {
       }
     }
 
-    
     counter["good_jets"] += good_jets.size(); 
     counter["signal_jets"] += signal_jets.size(); 
     counter["control_electrons"] += control_electrons.size(); 

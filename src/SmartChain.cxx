@@ -28,8 +28,7 @@ std::vector<std::string> SmartChain::get_all_branch_names() const {
   return m_set_branches; 
 }
 
-void SmartChain::SetBranchAddressPrivate(std::string name, void* branch, 
-					 chain::MissingBranchAction action) { 
+void SmartChain::SetBranchAddressPrivate(std::string name, void* branch) { 
   check_for_dup(name); 
   m_set_branch_set.insert(name); 
   m_set_branches.push_back(name);
@@ -37,24 +36,10 @@ void SmartChain::SetBranchAddressPrivate(std::string name, void* branch,
   unsigned branches_found = 0; 
   SetBranchStatus(name.c_str(), 1, &branches_found); 
   if (branches_found != 1) { 
-    switch (action) { 
-    case chain::NULL_POINTER: {
-      SetBranchStatus(name.c_str(), 0, &branches_found); 
-      return; 
-    }
-    case chain::NULL_NO_RECORD: {
-      SetBranchStatus(name.c_str(), 0, &branches_found); 
-      m_set_branches.pop_back(); 
-      m_set_branch_set.erase(name); 
-      return; 
-    }
-    case chain::THROW: {
-      std::string prob = (boost::format("missing branch: %s") % name).str();
-      throw MissingBranchError(prob);
-    }
-    default: throw std::logic_error("unknown action in " __FILE__); 
-    }
+    std::string prob = (boost::format("missing branch: %s") % name).str();
+    throw MissingBranchError(prob);
   }
+
   int return_code = TChain::SetBranchAddress(name.c_str(), branch); 
   if (return_code != 0 && return_code != 5 ){ 
     std::string issue = (boost::format("can not set %s , return code %i") % 
