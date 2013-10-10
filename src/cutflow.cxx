@@ -32,6 +32,8 @@ int main (int narg, const char* argv[]) {
     chain->add(argv[iii]); 
   }
   SusyBuffer buffer(chain); 
+
+  // ------ initialize susytools here -----------------
   SUSYObjDef* def = new SUSYObjDef; 
   def->initialize(false, true); // not data, atlfast
   printf("initalized\n"); 
@@ -47,7 +49,7 @@ int main (int narg, const char* argv[]) {
     def->Reset(); 
     chain->GetEntry(nnn); 
 
-    
+    // ---- start filling objects here -----
     std::vector<IdLorentzVector> all_jets; 
     for (int jeti = 0; jeti < buffer.jet_n; jeti++) { 
       def->FillJet(
@@ -164,7 +166,7 @@ int main (int narg, const char* argv[]) {
       all_muons.push_back(muon); 
     } // end muon filling loop
 
-    // object preselection 
+    //  ----- object preselection ------
     std::vector<IdLorentzVector> preselected_el = filter_pass(all_electrons); 
     std::vector<IdLorentzVector> preselected_mu = filter_pass(all_muons); 
     std::vector<IdLorentzVector> preselected_jets; 
@@ -180,7 +182,7 @@ int main (int narg, const char* argv[]) {
     counter["preselected_mu"] += preselected_mu.size(); 
     counter["preselected_jets"] += preselected_jets.size(); 
 
-    // overlap removal 
+    // ---- overlap removal ------
     std::vector<IdLorentzVector> after_overlap_jets = remove_overlaping(
       preselected_el, preselected_jets, 0.2); 
     std::vector<IdLorentzVector> after_overlap_el = remove_overlaping(
@@ -191,7 +193,7 @@ int main (int narg, const char* argv[]) {
     counter["after_overlap_mu"]   += after_overlap_mu.size(); 
     counter["after_overlap_jets"] += after_overlap_jets.size(); 
 
-    // veto object selection 
+    // ---- veto object selection -----
     std::vector<IdLorentzVector> veto_jets = filter_fail(after_overlap_jets); 
     std::vector<IdLorentzVector> veto_electrons; 
     for (std::vector<IdLorentzVector>::const_iterator 
@@ -214,12 +216,11 @@ int main (int narg, const char* argv[]) {
 	veto_muons.push_back(*itr); 
       }
     }
-	 
     counter["veto_jets"] += veto_jets.size(); 
     counter["veto_electrons"] += veto_electrons.size(); 
     counter["veto_muons"] += veto_muons.size(); 
 
-    // signal object selection 
+    // ---- signal object selection -----
     std::vector<IdLorentzVector> good_jets = filter_pass(after_overlap_jets);
     std::vector<IdLorentzVector> signal_jets; 
     for (std::vector<IdLorentzVector>::const_iterator
@@ -233,7 +234,6 @@ int main (int narg, const char* argv[]) {
 	signal_jets.push_back(*itr); 
       }
     }
-
     std::vector<IdLorentzVector> control_electrons; 
     for (std::vector<IdLorentzVector>::const_iterator
 	   itr = veto_electrons.begin(); 
@@ -252,14 +252,14 @@ int main (int narg, const char* argv[]) {
 	control_muons.push_back(*itr); 
       }
     }
-
     counter["good_jets"] += good_jets.size(); 
     counter["signal_jets"] += signal_jets.size(); 
     counter["control_electrons"] += control_electrons.size(); 
     counter["control_muons"] += control_muons.size(); 
-    
   } // end of event loop
-  
+
+
+  // ------ dump results ------
   typedef std::vector<std::pair<std::string, int> > OrdCuts; 
   OrdCuts ordered_cuts = counter.get_ordered_cuts(); 
   for (OrdCuts::const_iterator itr = ordered_cuts.begin(); 
