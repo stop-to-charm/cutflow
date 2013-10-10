@@ -1,0 +1,12 @@
+bin/
+*.root
+*.tar
+*.pdf
+\#*
+*~
+.__afs*
+*.txt
+*.pyc
+*.so
+local.mk
+cutflow
