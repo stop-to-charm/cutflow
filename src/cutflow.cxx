@@ -311,7 +311,7 @@ int main (int narg, const char* argv[]) {
     if(has_lar_error && is_data) continue; 
     counter["lar_error"]++; 
 
-    if (buffer.tileError && is_data) continue; 
+    if (buffer.tileError == 2 && is_data) continue; 
     counter["tile_error"]++; 
     
     if (buffer.coreFlags & 0x40000 && is_data) continue; 
