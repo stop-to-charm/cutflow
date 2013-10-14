@@ -52,6 +52,10 @@ void dump_counts(const CutCounter&, std::string);
 template<typename M, typename A>
 A remove_overlaping(const M& mask, A altered, const float delta_r); 
 
+// =================================================================
+// =============== main event loop starts here =====================
+// =================================================================
+
 int main (int narg, const char* argv[]) { 
 
   const bool is_data = false; 
