@@ -17,10 +17,37 @@ public:
   bool pass; 
 };
 
+// fill a common object container so it can be passed to each cutflow
+struct SelectionObjects 
+{
+  std::vector<IdLorentzVector> veto_jets; 
+  std::vector<IdLorentzVector> veto_electrons; 
+  std::vector<IdLorentzVector> veto_muons; 
+  std::vector<IdLorentzVector> control_electrons; 
+  std::vector<IdLorentzVector> control_muons; 
+  std::vector<IdLorentzVector> signal_jets; 
+  TVector2 met; 
+
+  TVector2 mu_met; 
+  IdLorentzVector electron_jet; 
+  bool is_data; 
+}; 
+
+// multiple object selections are called within the event loop
+void signal_selection(const SelectionObjects&, SUSYObjDef* def, 
+		      const SusyBuffer& buffer, CutCounter& counter); 
+void el_cr_selection(const SelectionObjects&, SUSYObjDef* def, 
+		     const SusyBuffer& buffer, CutCounter& counter); 
+void mu_cr_selection(const SelectionObjects&, SUSYObjDef* def, 
+		     const SusyBuffer& buffer, CutCounter& counter); 
+
 // these functions check to see if the object passed the SUSYObjDef cuts
 std::vector<IdLorentzVector> filter_pass(const std::vector<IdLorentzVector>&); 
 std::vector<IdLorentzVector> filter_fail(const std::vector<IdLorentzVector>&); 
+
+// various utility functions
 bool has_higher_pt(const TLorentzVector& v1, const TLorentzVector& v2); 
+void dump_counts(const CutCounter&, std::string); 
 
 template<typename M, typename A>
 A remove_overlaping(const M& mask, A altered, const float delta_r); 
@@ -42,6 +69,9 @@ int main (int narg, const char* argv[]) {
   printf("initalized\n"); 
 
   CutCounter counter; 
+  CutCounter signal_counter; 
+  CutCounter el_cr_counter; 
+  CutCounter mu_cr_counter; 
 
   const unsigned n_entries = std::min(chain->GetEntries(),100000000LL); 
   printf("looping over %i entries\n", n_entries); 
@@ -51,7 +81,7 @@ int main (int narg, const char* argv[]) {
     }
     def->Reset(); 
     chain->GetEntry(nnn); 
-
+    
     // ---- start filling objects here -----
     std::vector<IdLorentzVector> all_jets; 
     for (int jeti = 0; jeti < buffer.jet_n; jeti++) { 
@@ -197,8 +227,10 @@ int main (int narg, const char* argv[]) {
     counter["after_overlap_jets"] += after_overlap_jets.size(); 
 
     // ---- veto object selection -----
-    std::vector<IdLorentzVector> veto_jets = filter_fail(after_overlap_jets); 
-    std::vector<IdLorentzVector> veto_electrons; 
+    // selection objects are used in various cutflows
+    SelectionObjects so; 
+    so.is_data = is_data; 
+    so.veto_jets = filter_fail(after_overlap_jets); 
     for (std::vector<IdLorentzVector>::const_iterator 
 	   itr = after_overlap_el.begin(); 
 	 itr != after_overlap_el.end(); itr++) { 
@@ -206,26 +238,24 @@ int main (int narg, const char* argv[]) {
 	buffer.el_ptcone20->at(itr->index) / itr->Pt()); 
       bool isolated_el = rel_isolation < 0.1; 
       if (isolated_el) {
-	veto_electrons.push_back(*itr); 
+	so.veto_electrons.push_back(*itr); 
       }
     }
-    std::vector<IdLorentzVector> veto_muons; 
     for (std::vector<IdLorentzVector>::const_iterator
 	   itr = after_overlap_mu.begin(); 
 	 itr != after_overlap_mu.end(); itr++) { 
       float isolation = buffer.mu_staco_ptcone20->at(itr->index); 
       bool isolated_mu = isolation < 1.8e3; 
       if (isolated_mu) { 
-	veto_muons.push_back(*itr); 
+	so.veto_muons.push_back(*itr); 
       }
     }
-    counter["veto_jets"] += veto_jets.size(); 
-    counter["veto_electrons"] += veto_electrons.size(); 
-    counter["veto_muons"] += veto_muons.size(); 
+    counter["veto_jets"] += so.veto_jets.size(); 
+    counter["veto_electrons"] += so.veto_electrons.size(); 
+    counter["veto_muons"] += so.veto_muons.size(); 
 
     // ---- signal object selection -----
     std::vector<IdLorentzVector> good_jets = filter_pass(after_overlap_jets);
-    std::vector<IdLorentzVector> signal_jets; 
     for (std::vector<IdLorentzVector>::const_iterator
 	   itr = good_jets.begin(); 
 	 itr != good_jets.end(); itr++) { 
@@ -234,31 +264,29 @@ int main (int narg, const char* argv[]) {
       float jet_jvf = buffer.jet_jvtxf->at(itr->index); 
       bool ok_jvf = (jet_jvf > 0.5) || (itr->Pt() > 50e3); 
       if (signal_pt && tag_eta && ok_jvf) { 
-	signal_jets.push_back(*itr); 
+	so.signal_jets.push_back(*itr); 
       }
     }
-    std::vector<IdLorentzVector> control_electrons; 
     for (std::vector<IdLorentzVector>::const_iterator
-	   itr = veto_electrons.begin(); 
-	 itr != veto_electrons.end(); itr++) { 
+	   itr = so.veto_electrons.begin(); 
+	 itr != so.veto_electrons.end(); itr++) { 
       bool control_pt = itr->Pt() > 20e3; 
       if (control_pt) { 
-	control_electrons.push_back(*itr); 
+	so.control_electrons.push_back(*itr); 
       }
     }
-    std::vector<IdLorentzVector> control_muons; 
     for (std::vector<IdLorentzVector>::const_iterator
-	   itr = veto_muons.begin(); 
-	 itr != veto_muons.end(); itr++) { 
+	   itr = so.veto_muons.begin(); 
+	 itr != so.veto_muons.end(); itr++) { 
       bool control_pt = itr->Pt() > 20e3; 
       if (control_pt) { 
-	control_muons.push_back(*itr); 
+	so.control_muons.push_back(*itr); 
       }
     }
     counter["good_jets"] += good_jets.size(); 
-    counter["signal_jets"] += signal_jets.size(); 
-    counter["control_electrons"] += control_electrons.size(); 
-    counter["control_muons"] += control_muons.size(); 
+    counter["signal_jets"] += so.signal_jets.size(); 
+    counter["control_electrons"] += so.control_electrons.size(); 
+    counter["control_muons"] += so.control_muons.size(); 
 
     // --- calculate met ----
     std::vector<int> preselected_mu_idx; 
@@ -272,7 +300,7 @@ int main (int narg, const char* argv[]) {
       float wet = buffer.el_MET_Egamma10NoTau_wet->at(eln).at(0); 
       if (wet != 0.0) el_index.push_back(eln); 
     }
-    TVector2 met = def->GetMET(
+    so.met = def->GetMET(
       buffer.jet_MET_Egamma10NoTau_wet,
       buffer.jet_MET_Egamma10NoTau_wpx,
       buffer.jet_MET_Egamma10NoTau_wpy,
@@ -298,79 +326,187 @@ int main (int narg, const char* argv[]) {
       buffer.mu_staco_charge, 
       buffer.mu_staco_energyLossPar,
       buffer.averageIntPerXing); 
-    
-    // ---- start the event-wise cutflow -----
-    if (!buffer.trigger) continue; 
-    counter["trigger"]++; 
-
-    bool pass_vxp = def->IsGoodVertex(buffer.vx_nTracks); 
-    if (!pass_vxp) continue; 
-    counter["primary_vertex"]++; 
-
-    bool has_lar_error = (buffer.larError == 2); 
-    if(has_lar_error && is_data) continue; 
-    counter["lar_error"]++; 
-
-    if (buffer.tileError == 2 && is_data) continue; 
-    counter["tile_error"]++; 
-    
-    if (buffer.coreFlags & 0x40000 && is_data) continue; 
-    counter["core_flags"]++; 
-
-    bool has_tile_trip = def->IsTileTrip(buffer.RunNumber, buffer.lbn, 
-					 buffer.EventNumber); 
-    if (has_tile_trip) continue; 
-    counter["tile_trip"]++; 
-    
-    if (veto_electrons.size()) continue; 
-    counter["electron_veto"]++; 
-
-    if (veto_muons.size()) continue; 
-    counter["muon_veto"]++; 
-
-    if (veto_jets.size()) continue; 
-    counter["bad_jet_veto"]++; 
-    
-    const size_t n_jets = 4; 
-    if (signal_jets.size() < n_jets) continue; 
-    counter["n_jet"]++; 
-    
-    TLorentzVector met_4vec; 
-    met_4vec.SetPtEtaPhiE(1, 0, met.Phi(), 1); 
-    float min_dphi = 1000; 
-    for (std::vector<IdLorentzVector>::const_iterator 
-	   itr = signal_jets.begin(); itr < signal_jets.begin() + n_jets; 
-	 itr++) { 
-      float deltaphi = std::abs(met_4vec.DeltaPhi(*itr)); 
-      min_dphi = std::min(deltaphi, min_dphi); 
+    so.mu_met = so.met; 
+    if (so.control_muons.size() == 1) { 
+      TLorentzVector met_4vec; 
+      met_4vec.SetPtEtaPhiE(so.met.Mod(), 0, so.met.Phi(), so.met.Mod()); 
+      met_4vec += so.control_muons.at(0); 
+      so.mu_met.Set(met_4vec.Px(), met_4vec.Py()); 
     }
-    if (min_dphi < 0.4) continue; 
-    counter["dphi_jetmet_min"]++; 
-    
-    if (met.Mod() < 280e3) continue; 
-    counter["met_280"]++; 
-    
-    if (signal_jets.at(0).Pt() < 280e3) continue; 
-    counter["leading_jet_280"]++; 
+    if (so.control_electrons.size() == 1) { 
+      float min_delta_r = 10; 
+      for (std::vector<IdLorentzVector>::const_iterator 
+	     itr = all_jets.begin(); itr != all_jets.end(); itr++) {
+	float delta_r = so.control_electrons.at(0).DeltaR(*itr); 
+	if (delta_r < min_delta_r) { 
+	  so.electron_jet = *itr; 
+	  min_delta_r = delta_r; 
+	}
+      }
+    }
+
+    // ---- run the event-wise selections -----
+    signal_selection(so, def, buffer, signal_counter); 
+    el_cr_selection(so, def, buffer, el_cr_counter); 
+    mu_cr_selection(so, def, buffer, mu_cr_counter); 
 
   } // end of event loop
 
-
   // ------ dump results ------
-  printf("=======================================================\n"); 
-  typedef std::vector<std::pair<std::string, int> > OrdCuts; 
-  OrdCuts ordered_cuts = counter.get_ordered_cuts(); 
-  for (OrdCuts::const_iterator itr = ordered_cuts.begin(); 
-       itr != ordered_cuts.end(); itr++) { 
-    size_t pad_size = 20; 
-    std::string name = itr->first; 
-    if (name.size() < pad_size) { 
-      name.insert(0, pad_size - name.size(), ' '); 
-    }
-    printf("%s: %i\n", name.c_str(), itr->second); 
-  }
-
+  dump_counts(counter, "objects"); 
+  dump_counts(signal_counter, "signal region"); 
+  dump_counts(el_cr_counter, "el control region"); 
+  dump_counts(mu_cr_counter, "mu control region"); 
 }
+
+// ----- common preselection runs before the other event wise selections
+// will return false if a cut fails
+bool common_preselection(const SelectionObjects& so, SUSYObjDef* def, 
+			 const SusyBuffer& buffer, CutCounter& counter) { 
+  if (!buffer.trigger) return false; 
+  counter["trigger"]++; 
+
+  bool pass_vxp = def->IsGoodVertex(buffer.vx_nTracks); 
+  if (!pass_vxp) return false; 
+  counter["primary_vertex"]++; 
+
+  bool has_lar_error = (buffer.larError == 2); 
+  if(has_lar_error && so.is_data) return false; 
+  counter["lar_error"]++; 
+
+  if (buffer.tileError == 2 && so.is_data) return false; 
+  counter["tile_error"]++; 
+    
+  if (buffer.coreFlags & 0x40000 && so.is_data) return false; 
+  counter["core_flags"]++; 
+
+  bool has_tile_trip = def->IsTileTrip(buffer.RunNumber, buffer.lbn, 
+				       buffer.EventNumber); 
+  if (has_tile_trip) return false; 
+  counter["tile_trip"]++; 
+  
+  return true; 
+}
+
+void signal_selection(const SelectionObjects& so, SUSYObjDef* def, 
+		      const SusyBuffer& buffer, CutCounter& counter){
+    
+  bool pass_preselection = common_preselection(so, def, buffer, counter); 
+  if (!pass_preselection) return; 
+
+  if (so.veto_electrons.size()) return; 
+  counter["electron_veto"]++; 
+
+  if (so.veto_muons.size()) return; 
+  counter["muon_veto"]++; 
+
+  if (so.veto_jets.size()) return; 
+  counter["bad_jet_veto"]++; 
+    
+  const size_t n_jets = 4; 
+  if (so.signal_jets.size() < n_jets) return; 
+  counter["n_jet"]++; 
+    
+  TLorentzVector met_4vec; 
+  met_4vec.SetPtEtaPhiE(1, 0, so.met.Phi(), 1); 
+  float min_dphi = 1000; 
+  for (std::vector<IdLorentzVector>::const_iterator 
+	 itr = so.signal_jets.begin(); itr < so.signal_jets.begin() + n_jets; 
+       itr++) { 
+    float deltaphi = std::abs(met_4vec.DeltaPhi(*itr)); 
+    min_dphi = std::min(deltaphi, min_dphi); 
+  }
+  if (min_dphi < 0.4) return; 
+  counter["dphi_jetmet_min"]++; 
+    
+  if (so.met.Mod() < 280e3) return; 
+  counter["met_280"]++; 
+    
+  if (so.signal_jets.at(0).Pt() < 280e3) return; 
+  counter["leading_jet_280"]++; 
+
+} // end of signal region cutflow
+
+void el_cr_selection(const SelectionObjects& so, SUSYObjDef* def, 
+		     const SusyBuffer& buffer, CutCounter& counter){
+  bool pass_preselection = common_preselection(so, def, buffer, counter); 
+  if (!pass_preselection) return; 
+    
+  if (so.veto_muons.size()) return; 
+  counter["muon_veto"]++; 
+
+  if (so.veto_jets.size()) return; 
+  counter["bad_jet_veto"]++; 
+
+  if (so.control_electrons.size() != 1) return; 
+  counter["electron_jet"]++; 
+  std::vector<IdLorentzVector> jets = so.signal_jets; 
+  jets.push_back(so.electron_jet); 
+  std::sort(jets.begin(), jets.end(), has_higher_pt); 
+    
+  const size_t n_jets = 4; 
+  if (jets.size() < n_jets) return; 
+  counter["n_jet"]++; 
+    
+  TLorentzVector met_4vec; 
+  met_4vec.SetPtEtaPhiE(1, 0, so.met.Phi(), 1); 
+  float min_dphi = 1000; 
+  for (std::vector<IdLorentzVector>::const_iterator 
+	 itr = jets.begin(); itr < jets.begin() + n_jets; 
+       itr++) { 
+    float deltaphi = std::abs(met_4vec.DeltaPhi(*itr)); 
+    min_dphi = std::min(deltaphi, min_dphi); 
+  }
+  if (min_dphi < 0.4) return; 
+  counter["dphi_jetmet_min"]++; 
+    
+  if (so.met.Mod() < 280e3) return; 
+  counter["met_280"]++; 
+  
+  if (jets.at(0).Pt() < 280e3) return; 
+  counter["leading_jet_280"]++; 
+
+} // end of el cr cutflow
+
+void mu_cr_selection(const SelectionObjects& so, SUSYObjDef* def, 
+		     const SusyBuffer& buffer, CutCounter& counter){
+
+  bool pass_preselection = common_preselection(so, def, buffer, counter); 
+  if (!pass_preselection) return; 
+    
+  if (so.veto_electrons.size()) return; 
+  counter["electron_veto"]++; 
+
+  if (so.veto_muons.size() != 1) return; 
+  counter["muon_requirement"]++; 
+
+  if (so.veto_jets.size()) return; 
+  counter["bad_jet_veto"]++; 
+    
+  const size_t n_jets = 4; 
+  if (so.signal_jets.size() < n_jets) return; 
+  counter["n_jet"]++; 
+    
+  TLorentzVector met_4vec; 
+  met_4vec.SetPtEtaPhiE(1, 0, so.met.Phi(), 1); 
+  float min_dphi = 1000; 
+  for (std::vector<IdLorentzVector>::const_iterator 
+	 itr = so.signal_jets.begin(); itr < so.signal_jets.begin() + n_jets; 
+       itr++) { 
+    float deltaphi = std::abs(met_4vec.DeltaPhi(*itr)); 
+    min_dphi = std::min(deltaphi, min_dphi); 
+  }
+  if (min_dphi < 0.4) return; 
+  counter["dphi_jetmet_min"]++; 
+  
+  if (so.mu_met.Mod() < 280e3) return; 
+  counter["mu_met_280"]++; 
+    
+  if (so.signal_jets.at(0).Pt() < 280e3) return; 
+  counter["leading_jet_280"]++; 
+
+} // end of mu control region cutflow
+
 
 
 std::vector<IdLorentzVector> filter_pass(
@@ -418,3 +554,22 @@ A remove_overlaping(const M& mask, A altered, const float delta_r) {
 bool has_higher_pt(const TLorentzVector& v1, const TLorentzVector& v2) { 
   return v1.Pt() > v2.Pt(); 
 }
+
+
+// ================= utility functions ==================
+
+void dump_counts(const CutCounter& counter, std::string name) { 
+  printf(" ========== %s ========== \n",name.c_str()); 
+  typedef std::vector<std::pair<std::string, int> > OrdCuts; 
+  OrdCuts ordered_cuts = counter.get_ordered_cuts(); 
+  for (OrdCuts::const_iterator itr = ordered_cuts.begin(); 
+       itr != ordered_cuts.end(); itr++) { 
+    size_t pad_size = 20; 
+    std::string name = itr->first; 
+    if (name.size() < pad_size) { 
+      name.insert(0, pad_size - name.size(), ' '); 
+    }
+    printf("%s: %i\n", name.c_str(), itr->second); 
+  }
+}
+
