@@ -282,7 +282,7 @@ int main (int narg, const char* argv[]) {
     for (std::vector<IdLorentzVector>::const_iterator
 	   itr = so.veto_muons.begin(); 
 	 itr != so.veto_muons.end(); itr++) { 
-      bool control_pt = itr->Pt() > 20e3; 
+      bool control_pt = itr->Pt() > 10e3; 
       if (control_pt) { 
 	so.control_muons.push_back(*itr); 
       }
@@ -407,7 +407,7 @@ void signal_selection(const SelectionObjects& so, SUSYObjDef* def,
   if (so.veto_jets.size()) return; 
   counter["bad_jet_veto"]++; 
     
-  const size_t n_jets = 4; 
+  const size_t n_jets = 3; 
   if (so.signal_jets.size() < n_jets) return; 
   counter["n_jet"]++; 
     
@@ -423,11 +423,11 @@ void signal_selection(const SelectionObjects& so, SUSYObjDef* def,
   if (min_dphi < 0.4) return; 
   counter["dphi_jetmet_min"]++; 
     
-  if (so.met.Mod() < 280e3) return; 
-  counter["met_280"]++; 
+  if (so.met.Mod() < 150e3) return; 
+  counter["met_150"]++; 
     
-  if (so.signal_jets.at(0).Pt() < 280e3) return; 
-  counter["leading_jet_280"]++; 
+  if (so.signal_jets.at(0).Pt() < 150e3) return; 
+  counter["leading_jet_150"]++; 
 
 } // end of signal region cutflow
 
@@ -448,7 +448,7 @@ void el_cr_selection(const SelectionObjects& so, SUSYObjDef* def,
   jets.push_back(so.electron_jet); 
   std::sort(jets.begin(), jets.end(), has_higher_pt); 
     
-  const size_t n_jets = 4; 
+  const size_t n_jets = 3; 
   if (jets.size() < n_jets) return; 
   counter["n_jet"]++; 
     
@@ -464,11 +464,11 @@ void el_cr_selection(const SelectionObjects& so, SUSYObjDef* def,
   if (min_dphi < 0.4) return; 
   counter["dphi_jetmet_min"]++; 
     
-  if (so.met.Mod() < 280e3) return; 
-  counter["met_280"]++; 
+  if (so.met.Mod() < 150e3) return; 
+  counter["met_150"]++; 
   
-  if (jets.at(0).Pt() < 280e3) return; 
-  counter["leading_jet_280"]++; 
+  if (jets.at(0).Pt() < 150e3) return; 
+  counter["leading_jet_150"]++; 
 
 } // end of el cr cutflow
 
@@ -487,7 +487,7 @@ void mu_cr_selection(const SelectionObjects& so, SUSYObjDef* def,
   if (so.veto_jets.size()) return; 
   counter["bad_jet_veto"]++; 
     
-  const size_t n_jets = 4; 
+  const size_t n_jets = 3; 
   if (so.signal_jets.size() < n_jets) return; 
   counter["n_jet"]++; 
     
@@ -503,11 +503,11 @@ void mu_cr_selection(const SelectionObjects& so, SUSYObjDef* def,
   if (min_dphi < 0.4) return; 
   counter["dphi_jetmet_min"]++; 
   
-  if (so.mu_met.Mod() < 280e3) return; 
-  counter["mu_met_280"]++; 
+  if (so.mu_met.Mod() < 150e3) return; 
+  counter["mu_met_150"]++; 
     
-  if (so.signal_jets.at(0).Pt() < 280e3) return; 
-  counter["leading_jet_280"]++; 
+  if (so.signal_jets.at(0).Pt() < 150e3) return; 
+  counter["leading_jet_150"]++; 
 
 } // end of mu control region cutflow
 
