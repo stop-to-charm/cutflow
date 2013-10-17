@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <vector> 
 #include <algorithm>
+#include <iostream> 
 
 // minimal class to keep track of particles
 class IdLorentzVector : public TLorentzVector
@@ -77,7 +78,9 @@ int main (int narg, const char* argv[]) {
   CutCounter el_cr_counter; 
   CutCounter mu_cr_counter; 
 
-  const unsigned n_entries = std::min(chain->GetEntries(),100000000LL); 
+  // const long long max_entries = 10LL; 
+  const long long max_entries = 100000000LL; 
+  const unsigned n_entries = std::min(chain->GetEntries(),max_entries); 
   printf("looping over %i entries\n", n_entries); 
   for (unsigned nnn = 0; nnn < n_entries; nnn++) {
     if (nnn % 1000 == 0) { 
