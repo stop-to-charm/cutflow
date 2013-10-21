@@ -174,9 +174,11 @@ public :
   std::vector<float>* trk_cone40_ptmin3gev_hitschi_nTrackIso; 
 
   SusyBuffer(SmartChain *tree); 
+  bool is_data() const; 
 
 private: 
   void set_mc_branches(SmartChain* chain, std::string jc); 
+  bool m_is_data; 
 };
 
 #endif

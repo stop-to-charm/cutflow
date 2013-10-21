@@ -59,14 +59,15 @@ A remove_overlaping(const M& mask, A altered, const float delta_r);
 
 int main (int narg, const char* argv[]) { 
 
-  const bool is_data = false; 
-
   SmartChain* chain = new SmartChain("susy"); 
   for (int iii = 1; iii < narg; iii++) { 
     printf("file: %s, %i of %i\n", argv[iii], iii, narg - 1); 
     chain->add(argv[iii]); 
   }
   SusyBuffer buffer(chain); 
+
+  const bool is_data = buffer.is_data(); 
+  printf("running on %s\n", is_data ? "data":"MC"); 
 
   // ------ initialize susytools here -----------------
   SUSYObjDef* def = new SUSYObjDef; 
@@ -110,7 +111,7 @@ int main (int narg, const char* argv[]) {
 	buffer.averageIntPerXing,
 	buffer.vx_nTracks); 
 
-      def->ApplyJetSystematics(
+      if (!is_data) def->ApplyJetSystematics(
 	jeti, 
 	buffer.jet_constscale_eta        ->at(jeti), 
 	buffer.jet_flavor_truth_label ->at(jeti), 

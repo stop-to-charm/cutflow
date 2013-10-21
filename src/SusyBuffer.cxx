@@ -3,12 +3,20 @@
 #include "SusyBuffer.h"
 #include "SmartChain.hh"
 
-SusyBuffer::SusyBuffer(SmartChain *fChain)
+SusyBuffer::SusyBuffer(SmartChain *fChain): 
+  m_is_data(false)
 {
 
   std::string jc = "jet_AntiKt4LCTopo"; 
 
   fChain->SetBranchStatus("*",0); 
+
+  try { 
+    set_mc_branches(fChain, jc);
+  } catch (const MissingBranchError& err) { 
+    m_is_data = true; 
+  }
+
 
   fChain->SetBranch("RunNumber", &RunNumber);  
   fChain->SetBranch("EventNumber", &EventNumber); 
@@ -148,9 +156,6 @@ SusyBuffer::SusyBuffer(SmartChain *fChain)
   fChain->SetBranch(jc + "_NegativeE", &jet_NegativeE); 
   fChain->SetBranch(jc + "_flavor_weight_JetFitterCOMBNN", &jet_flavor_weight_JetFitterCOMBNN); 
 
-  if (true ) { 
-    set_mc_branches(fChain, jc);
-  }
 
   fChain->SetBranch(jc + "_flavor_component_jfitcomb_pu", 
 		    &jet_flavor_component_jfitcomb_pu);
@@ -181,6 +186,8 @@ SusyBuffer::SusyBuffer(SmartChain *fChain)
 		    &trk_cone40_ptmin3gev_hitschi_nTrackIso); 
 
 }
+
+bool SusyBuffer::is_data() const { return m_is_data;} 
 
 void SusyBuffer::set_mc_branches(SmartChain* chain, 
 				 std::string jc)

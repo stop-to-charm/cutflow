@@ -11,3 +11,6 @@ bin/
 local.mk
 /cutflow
 /stop-files
+/data-files
+/wtaunu-files
+

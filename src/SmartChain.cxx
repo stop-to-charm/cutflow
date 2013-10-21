@@ -59,7 +59,7 @@ void SmartChain::throw_bad_branch(std::string name) const {
   std::string issue = (boost::format("can't find branch %s, ") % name).str(); 
   std::string file = GetFile()->GetName(); 
   issue.append("bad file: " + file); 
-  throw std::runtime_error(issue); 
+  throw MissingBranchError(issue); 
 
 }
 
