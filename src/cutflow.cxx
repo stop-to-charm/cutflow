@@ -1,10 +1,15 @@
 #include <cstdio>
 #include "SmartChain.hh"
 #include "SusyBuffer.h"
-#include "SUSYTools/SUSYObjDef.h"
-#include "TLorentzVector.h"
 #include "CutCounter.hh"
 
+#include "SUSYTools/SUSYObjDef.h"
+#include "TLorentzVector.h"
+#include "GoodRunsLists/TGRLCollection.h"
+#include "GoodRunsLists/TGoodRunsListReader.h"
+
+#include <fstream>
+#include <stdexcept> 
 #include <cstdlib>
 #include <vector> 
 #include <algorithm>
@@ -32,6 +37,7 @@ struct SelectionObjects
   TVector2 mu_met; 
   IdLorentzVector electron_jet; 
   bool is_data; 
+  bool pass_grl; 
 }; 
 
 // multiple object selections are called within the event loop
@@ -49,6 +55,7 @@ std::vector<IdLorentzVector> filter_fail(const std::vector<IdLorentzVector>&);
 // various utility functions
 bool has_higher_pt(const TLorentzVector& v1, const TLorentzVector& v2); 
 void dump_counts(const CutCounter&, std::string); 
+bool exists(std::string file_name); 
 
 template<typename M, typename A>
 A remove_overlaping(const M& mask, A altered, const float delta_r); 
@@ -73,6 +80,14 @@ int main (int narg, const char* argv[]) {
   SUSYObjDef* def = new SUSYObjDef; 
   def->initialize(is_data, true); // not data, atlfast
   printf("initalized\n"); 
+  Root::TGRLCollection* grl = 0; 
+  if (is_data) { 
+    std::string grl_name = "grl.xml"; 
+    if (!exists(grl_name)) throw std::runtime_error(grl_name + " not found");
+    Root::TGoodRunsListReader reader("grl.xml",true); 
+    reader.Interpret(); 
+    grl = new Root::TGRLCollection(reader.GetMergedGRLCollection()); 
+  }
 
   CutCounter counter; 
   CutCounter signal_counter; 
@@ -353,6 +368,13 @@ int main (int narg, const char* argv[]) {
       }
     }
 
+    // ---- grl -----
+    if (grl) { 
+      so.pass_grl = grl->HasRunLumiBlock(buffer.RunNumber, buffer.lbn);
+    } else { 
+      so.pass_grl = true; 
+    }
+
     // ---- run the event-wise selections -----
     signal_selection(so, def, buffer, signal_counter); 
     el_cr_selection(so, def, buffer, el_cr_counter); 
@@ -371,6 +393,11 @@ int main (int narg, const char* argv[]) {
 // will return false if a cut fails
 bool common_preselection(const SelectionObjects& so, SUSYObjDef* def, 
 			 const SusyBuffer& buffer, CutCounter& counter) { 
+  counter["total"]++; 
+
+  if (!so.pass_grl) return false; 
+  counter["grl"]++; 
+
   if (!buffer.trigger) return false; 
   counter["trigger"]++; 
 
@@ -581,3 +608,12 @@ void dump_counts(const CutCounter& counter, std::string name) {
   }
 }
 
+bool exists(std::string file_name) { 
+  std::ifstream file(file_name.c_str(), std::ios::binary); 
+  if (!file) { 
+    file.close(); 
+    return false; 
+  }
+  file.close(); 
+  return true; 
+}

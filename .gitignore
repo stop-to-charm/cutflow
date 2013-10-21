@@ -14,3 +14,4 @@ local.mk
 /data-files
 /wtaunu-files
 
+*.xml
