@@ -234,9 +234,10 @@ int main (int narg, const char* argv[]) {
 	preselected_jets.push_back(*jitr); 
       }
     }
+
+    counter["preselected_jets"] += preselected_jets.size(); 
     counter["preselected_el"] += preselected_el.size(); 
     counter["preselected_mu"] += preselected_mu.size(); 
-    counter["preselected_jets"] += preselected_jets.size(); 
 
     // ---- overlap removal ------
     std::vector<IdLorentzVector> after_overlap_jets = remove_overlaping(
@@ -245,9 +246,9 @@ int main (int narg, const char* argv[]) {
       after_overlap_jets, preselected_el, 0.4); 
     std::vector<IdLorentzVector> after_overlap_mu = remove_overlaping(
       after_overlap_jets, preselected_mu, 0.4); 
+    counter["after_overlap_jets"] += after_overlap_jets.size(); 
     counter["after_overlap_el"]   += after_overlap_el.size(); 
     counter["after_overlap_mu"]   += after_overlap_mu.size(); 
-    counter["after_overlap_jets"] += after_overlap_jets.size(); 
 
     // ---- veto object selection -----
     // selection objects are used in various cutflows
