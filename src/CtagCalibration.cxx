@@ -184,9 +184,18 @@ void CtagCalibration::set_indices(ctag::Flavor flav, ctag::OperatingPoint op)
   const std::string& label = get_label(flav); 
   FOPIndex ind_key(flav, op); 
   bool ok_sf = m_cdi->retrieveCalibrationIndex(
-    label, m_op_strings.at(op), m_jet_author, true, m_flav_op_sf_index[ind_key]); 
+    label, 
+    m_op_strings.at(op), 
+    m_jet_author, 
+    true, 			// is sf
+    m_flav_op_sf_index[ind_key]); 
+
   bool ok_eff = m_cdi->retrieveCalibrationIndex(
-    label, m_op_strings.at(op), m_jet_author, false, m_flav_op_eff_index[ind_key]); 
+    label, 
+    m_op_strings.at(op), 
+    m_jet_author, 
+    false, 			// is not sf
+    m_flav_op_eff_index[ind_key]); 
   if (!ok_eff || !ok_sf) { 
     std::string problem = "problem setting op " + m_op_strings.at(op) + " " + 
       get_label(flav); 
@@ -196,11 +205,11 @@ void CtagCalibration::set_indices(ctag::Flavor flav, ctag::OperatingPoint op)
 
 
 unsigned CtagCalibration::get_index(
-  const std::map<FOPIndex, unsigned>& vec, 
+  const std::map<FOPIndex, unsigned>& map, 
   ctag::Flavor flav, ctag::OperatingPoint op) const { 
   FOPIndex index = std::make_pair(flav, op); 
-  std::map<FOPIndex, unsigned>::const_iterator pos = vec.find(index);
-  if (pos == vec.end()) throw std::logic_error(
+  std::map<FOPIndex, unsigned>::const_iterator pos = map.find(index);
+  if (pos == map.end()) throw std::logic_error(
     "asked for unset operating point index in " __FILE__); 
   return pos->second; 
 }
