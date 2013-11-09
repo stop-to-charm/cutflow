@@ -45,7 +45,6 @@ private:
   typedef std::map<ctag::OperatingPoint, double> CutValue; 
   typedef std::pair<ctag::Flavor,ctag::OperatingPoint> FOPIndex; 
   void check_cdi() const; 
-  std::string get_op(ctag::OperatingPoint) const; 
   CalVars get_vars(double pt, double eta) const; 
   std::string get_label(ctag::Flavor) const; 
   void set_indices(ctag::Flavor, ctag::OperatingPoint); 
