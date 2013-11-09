@@ -31,6 +31,20 @@ JetTagSF::JetTagSF():
   down(0.0/0.0)
 {}
 
+JetTagSF operator*(const JetTagSF& left, const JetTagSF& right) { 
+  JetTagSF out; 
+  out.nominal = left.nominal * right.nominal; 
+  out.up = left.up * right.up; 
+  out.down = left.down * right.down; 
+  return out; 
+}
+JetTagSF& operator*=(JetTagSF& left, const JetTagSF& right) { 
+  left.nominal *= right.nominal; 
+  left.up *= right.up; 
+  left.down *= right.down; 
+  return left; 
+}
+
 namespace { 
   // shorthand for variations
   double up(const std::pair<double, double>& res) { 

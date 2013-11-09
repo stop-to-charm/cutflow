@@ -23,8 +23,10 @@ struct JetTagFactorInputs {
   ctag::Flavor flavor; 		// B, C, U, T, or DATA
 };
 
+
 // translator from the int value in D3PDs to enums used here
 ctag::Flavor get_flavor(int flavor_truth_label); 
+
 
 // the output structure. 'up' and 'down' variations may be symmetric in 
 // many cases, but we keep both for flexibility. 
@@ -35,7 +37,12 @@ struct JetTagSF {
   double up; 
   double down; 
 }; 
+// Inevatably we'll multiply the SF
+JetTagSF operator*(const JetTagSF&, const JetTagSF&); 
+JetTagSF& operator*=(JetTagSF&, const JetTagSF&); 
 
+
+// The class responsible for the actual calibration 
 class CtagCalibration : boost::noncopyable 
 {
 public: 
@@ -43,7 +50,8 @@ public:
   ~CtagCalibration(); 
   // We should apply the product of the scale factors for every jet in 
   // the event. This is essentially the 'continuous' approach, where 
-  // the scale factors depend on the tagger
+  // the scale factors depend on the tagger output rather than the 
+  // specific cut. 
   JetTagSF scale_factor(const JetTagFactorInputs& jet_tf_inputs) const; 
   bool pass(const JetTagFactorInputs& jet_tf_inputs, 
 	    ctag::OperatingPoint) const; 
