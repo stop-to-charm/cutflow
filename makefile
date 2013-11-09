@@ -8,6 +8,8 @@ SRC          := src
 INC          := include
 DICT         := dict
 
+# --- cxx version 
+CXX := g++
 
 ifndef ROOTCOREDIR
 $(error "couldn't find ROOTCOREDIR")
