@@ -3,7 +3,19 @@
 #include <stdexcept> 
 #include <cassert> 
 
-// Analysis::Uncertainty get_unct(btag::Uncertainty); 
+// translator from flavor truth label to enum
+ctag::Flavor get_flavor(int flavor_truth_label) { 
+  switch (flavor_truth_label) { 
+  case -1: return ctag::DATA; 
+  case 0: return ctag::U; 
+  case 4: return ctag::C; 
+  case 5: return ctag::B; 
+  case 15: return ctag::T; 
+  default: throw std::domain_error(
+    "got weird flavor truth label in " __FILE__); 
+  }
+}
+
 
 // fill from the CalibrationDataInterfaceROOT output
 JetTagSF::JetTagSF(const std::pair<double, double>& cal_result): 
@@ -35,9 +47,12 @@ namespace {
 
 CtagCalibration::CtagCalibration(std::string clb_file, 
 				 std::string file_path): 
-  m_cdi(new CDI("JetFitterCOMBCharm", clb_file, file_path)),
+  m_cdi(0),
   m_jet_author("AntiKt4TopoLCJVF")
 {
+  m_cdi = new Analysis::CalibrationDataInterfaceROOT(
+    "JetFitterCOMBCharm", clb_file, file_path); 
+
   using namespace ctag; 
   // WARNING: these are hacks until we get a better CDI
   m_op_strings[LOOSE] = "-1_0_0_0"; 
@@ -47,6 +62,8 @@ CtagCalibration::CtagCalibration(std::string clb_file,
     check_cdi(); 
   }
 
+  // note that the cuts used here aren't consistent with the ones
+  // listed above. 
   m_anti_u_cuts[LOOSE] = -999; 
   m_anti_u_cuts[MEDIUM] = 0.95; 
   m_anti_b_cuts[LOOSE]  = -0.9; 
@@ -70,7 +87,8 @@ CtagCalibration::~CtagCalibration() {
 JetTagSF CtagCalibration::scale_factor(
   const JetTagFactorInputs& tf_inputs) const { 
 
-  CalVars vars = get_vars(tf_inputs.pt, tf_inputs.eta); 
+  Analysis::CalibrationDataVariables vars = get_vars(
+    tf_inputs.pt, tf_inputs.eta); 
   Analysis::Uncertainty unct = Analysis::Total; 
 
   // hack in some trickery here... 
@@ -90,7 +108,8 @@ JetTagSF CtagCalibration::scale_factor(
   if (pass(tf_inputs, ctag::MEDIUM)) { 
     return JetTagSF(m_cdi->getScaleFactor(vars, med_sf_index, unct));
   }
-  // if we pass loose but fail medium we need to be clever
+  // if we pass loose but fail medium we need to be clever. 
+  // We interpolate between the efficiencies of the loose and medium points
   if (pass(tf_inputs, ctag::LOOSE) && !pass(tf_inputs, ctag::LOOSE)) { 
     unsigned loose_eff_index = get_index(
       m_flav_op_eff_index, tf_inputs.flavor, ctag::LOOSE); 
@@ -114,7 +133,14 @@ JetTagSF CtagCalibration::scale_factor(
     sf.nominal = ((data_loose_eff.first - data_med_eff.first) / 
 		  (mc_loose_eff.first - mc_med_eff.first)); 
 
-    // not sure of the best way to do the variation...
+    // not sure of the best way to do the variation, 
+    // here we vary the systematics together. 
+    // 
+    // This _should_ result in a reasonable variation in the SF, since
+    // eff_data(syst) = SF(syst) * eff_mc(syst). 
+    // Regardless of how eff_mc(syst) responds to the systematics, it still
+    // gets muptiplied by the SF(syst). 
+
     sf.up = ( (up(data_loose_eff) - up(data_med_eff) ) / 
 	      (up(mc_loose_eff) - up(mc_med_eff))); 
     sf.down = ( (down(data_loose_eff) - down(data_med_eff) ) / 
@@ -157,7 +183,7 @@ void CtagCalibration::check_cdi() const {
 Analysis::CalibrationDataVariables CtagCalibration::get_vars(double pt, 
 							     double eta) 
   const { 
-  CalVars vars; 
+  Analysis::CalibrationDataVariables vars; 
   vars.jetAuthor = m_jet_author; 
   vars.jetPt = pt; 
   vars.jetEta = eta; 
@@ -170,6 +196,8 @@ std::string CtagCalibration::get_label(ctag::Flavor flavor) const {
   case ctag::C: return std::string("C"); 
   case ctag::U: return std::string("Light"); 
   case ctag::T: return std::string("T"); 
+  case ctag::DATA: throw std::domain_error(
+    "shouldn't be asking for a data truth label in " __FILE__); 
   default: 
     assert(false); 
   }
@@ -193,8 +221,8 @@ void CtagCalibration::set_indices(ctag::Flavor flav, ctag::OperatingPoint op)
     false, 			// is not sf
     m_flav_op_eff_index[ind_key]); 
   if (!ok_eff || !ok_sf) { 
-    std::string problem = "problem setting op " + m_op_strings.at(op) + " " + 
-      get_label(flav); 
+    std::string problem = "problem setting op " + get(m_op_strings, op) + 
+      " " + get_label(flav) + " there may be something wrong with your CDI"; 
     throw std::runtime_error(problem); 
   }
 }
@@ -211,7 +239,7 @@ namespace {
   template<typename T, typename K> 
   const T& get(const std::map<K,T>& map, const K& index) { 
     typename std::map<K, T>::const_iterator pos = map.find(index);
-    if (pos == map.end()) throw std::logic_error(
+    if (pos == map.end()) throw std::domain_error(
       "asked for unknown index in " __FILE__); 
     return pos->second; 
   }
